@@ -1,6 +1,7 @@
 package main
 
 import (
+    "github.com/Vincie25/pokedexcli/internal/pokecache"
     "bufio"
     "fmt"
     "os"
@@ -29,6 +30,7 @@ type pokeResponse struct {
 type config struct {
     Next     *string
     Previous *string
+    cache    *pokecache.Cache
 }
 
 var commands map[string]cliCommand
@@ -77,6 +79,16 @@ func commandMap(cfg *config) error {
 	for _, location := range pokeRes.Results {
 		fmt.Println(location.Name)
 	}
+    if val, ok := cfg.cache.Get(url); ok {
+        // Cache hit - direkt nutzen
+        json.Unmarshal(val, &pokeRes)
+    } else {
+        // Cache miss - HTTP Request machen
+        res, err := http.Get(url)
+        // ... body lesen ...
+        cfg.cache.Add(url, body)
+        json.Unmarshal(body, &pokeRes)
+    }
 
 	return nil
 }
@@ -110,12 +122,24 @@ func commandMapb(cfg *config) error {
 	for _, location := range pokeRes.Results {
 		fmt.Println(location.Name)
 	}
+    if val, ok := cfg.cache.Get(url); ok {
+        // Cache hit - direkt nutzen
+        json.Unmarshal(val, &pokeRes)
+    } else {
+        // Cache miss - HTTP Request machen
+        res, err := http.Get(url)
+        // ... body lesen ...
+        cfg.cache.Add(url, body)
+        json.Unmarshal(body, &pokeRes)
+    }
 
 	return nil
 }
 
 func main() {
-    cfg := &config{}
+    cfg := &config{
+        cache: pokecache.NewCache(5 * time.Second),
+    }
     commands = map[string]cliCommand{
         "exit": {
             name:        "exit",
