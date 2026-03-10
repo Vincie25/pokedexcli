@@ -218,6 +218,7 @@ func commandCatch(cfg *config, args []string) error {
     }
 
     fmt.Printf("%s was caught!\n", name)
+    fmt.Println("You may now inspect it with the inspect command.")
     cfg.pokedex[name] = pokemon
     return nil
 }
@@ -249,6 +250,14 @@ func commandInspect(cfg *config, args []string) error {
         fmt.Printf("  - %s\n", t.Type.Name)
     }
 
+    return nil
+}
+
+func commandPokedex(cfg *config, args []string) error {
+    fmt.Println("Your Pokedex:")
+    for name := range cfg.pokedex {
+        fmt.Printf(" - %s\n", name)
+    }
     return nil
 }
 
@@ -292,6 +301,11 @@ func main() {
             name:        "inspect",
             description: "Inspect a caught Pokemon",
             callback:    commandInspect,
+        },
+        "pokedex": {
+            name:        "pokedex",
+            description: "Lists all caught Pokemon",
+            callback:    commandPokedex,
         },
     }
     scanner := bufio.NewScanner(os.Stdin)
