@@ -22,6 +22,19 @@ type cliCommand struct {
 type Pokemon struct {
     Name           string `json:"name"`
     BaseExperience int    `json:"base_experience"`
+    Height         int    `json:"height"`
+    Weight         int    `json:"weight"`
+    Stats          []struct {
+        BaseStat int `json:"base_stat"`
+        Stat     struct {
+            Name string `json:"name"`
+        } `json:"stat"`
+    } `json:"stats"`
+    Types []struct {
+        Type struct {
+            Name string `json:"name"`
+        } `json:"type"`
+    } `json:"types"`
 }
 
 type pokeResponse struct {
@@ -209,6 +222,36 @@ func commandCatch(cfg *config, args []string) error {
     return nil
 }
 
+func commandInspect(cfg *config, args []string) error {
+    if len(args) == 0 {
+        fmt.Println("please provide a pokemon name")
+        return nil
+    }
+
+    name := args[0]
+    pokemon, ok := cfg.pokedex[name]
+    if !ok {
+        fmt.Println("you have not caught that pokemon")
+        return nil
+    }
+
+    fmt.Printf("Name: %s\n", pokemon.Name)
+    fmt.Printf("Height: %d\n", pokemon.Height)
+    fmt.Printf("Weight: %d\n", pokemon.Weight)
+
+    fmt.Println("Stats:")
+    for _, stat := range pokemon.Stats {
+        fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+    }
+
+    fmt.Println("Types:")
+    for _, t := range pokemon.Types {
+        fmt.Printf("  - %s\n", t.Type.Name)
+    }
+
+    return nil
+}
+
 func main() {
     cfg := &config{
         cache: pokecache.NewCache(5 * time.Second),
@@ -244,6 +287,11 @@ func main() {
             name:        "catch",
             description: "Attempt to catch a Pokemon",
             callback:    commandCatch,
+        },
+        "inspect": {
+            name:        "inspect",
+            description: "Inspect a caught Pokemon",
+            callback:    commandInspect,
         },
     }
     scanner := bufio.NewScanner(os.Stdin)
