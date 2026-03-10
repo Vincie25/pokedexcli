@@ -10,12 +10,18 @@ import (
     "io"
     "net/http"
     "time"
+    "math/rand"
 )
 
 type cliCommand struct {
     name        string
     description string
     callback    func(*config, []string) error
+}
+
+type Pokemon struct {
+    Name           string `json:"name"`
+    BaseExperience int    `json:"base_experience"`
 }
 
 type pokeResponse struct {
@@ -40,9 +46,11 @@ type config struct {
     Next     *string
     Previous *string
     cache    *pokecache.Cache
+    pokedex map[string]Pokemon
 }
 
 var commands map[string]cliCommand
+
 
 func commandExit(cfg *config, args []string) error {
     fmt.Println("Closing the Pokedex... Goodbye!")
@@ -162,9 +170,49 @@ func commandExplore(cfg *config, args []string) error {
 	return nil
 }
 
+func commandCatch(cfg *config, args []string) error {
+    if len(args) == 0 {
+        fmt.Println("please provide a pokemon name")
+        return nil
+    }
+
+    name := args[0]
+    url := "https://pokeapi.co/api/v2/pokemon/" + name
+
+    var pokemon Pokemon
+    if val, ok := cfg.cache.Get(url); ok {
+        json.Unmarshal(val, &pokemon)
+    } else {
+        res, err := http.Get(url)
+        if err != nil {
+            return err
+        }
+        defer res.Body.Close()
+        body, err := io.ReadAll(res.Body)
+        if err != nil {
+            return err
+        }
+        cfg.cache.Add(url, body)
+        json.Unmarshal(body, &pokemon)
+    }
+
+    fmt.Printf("Throwing a Pokeball at %s...\n", name)
+
+    // Schritt 3: Fangchance - höhere base_experience = schwerer zu fangen
+    if rand.Intn(pokemon.BaseExperience) > 40 {
+        fmt.Printf("%s escaped!\n", name)
+        return nil
+    }
+
+    fmt.Printf("%s was caught!\n", name)
+    cfg.pokedex[name] = pokemon
+    return nil
+}
+
 func main() {
     cfg := &config{
         cache: pokecache.NewCache(5 * time.Second),
+        pokedex:  make(map[string]Pokemon),
     }
     commands = map[string]cliCommand{
         "exit": {
@@ -192,6 +240,11 @@ func main() {
 			description: "Explore a location area",
 			callback:    commandExplore,
 		},
+        "catch": {
+            name:        "catch",
+            description: "Attempt to catch a Pokemon",
+            callback:    commandCatch,
+        },
     }
     scanner := bufio.NewScanner(os.Stdin)
 
